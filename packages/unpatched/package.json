@@ -1,0 +1,9 @@
+{
+  "name": "unpatched",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependabot auto-triage rules 検証用ダミー（has:patch 検証用 / 修正版が存在しない advisory を含む）",
+  "dependencies": {
+    "request": "^2.88.2"
+  }
+}

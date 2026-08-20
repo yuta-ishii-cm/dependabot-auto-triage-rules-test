@@ -1,0 +1,9 @@
+{
+  "name": "dev-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependabot auto-triage rules 検証用ダミー（scope:development 検証用）",
+  "devDependencies": {
+    "qs": "^6.5.1"
+  }
+}

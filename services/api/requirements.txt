@@ -1,0 +1,4 @@
+# Dependabot auto-triage rules 検証用ダミー（ecosystem:pip 検証用）
+# 意図的に既知の脆弱性を含む古いバージョンを固定している。インストール・実行はしない。
+PyYAML==5.1
+Jinja2==2.10
