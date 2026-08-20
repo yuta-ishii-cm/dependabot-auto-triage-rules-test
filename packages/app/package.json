@@ -1,0 +1,9 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependabot auto-triage rules 検証用ダミー（ルール対象外 / 誤爆チェック用）",
+  "dependencies": {
+    "node-forge": "^0.9.0"
+  }
+}

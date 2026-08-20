@@ -1,0 +1,9 @@
+{
+  "name": "pkg-a",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependabot auto-triage rules 検証用ダミー（ルール対象1）",
+  "dependencies": {
+    "lodash": "^4.17.11"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "pkg-b",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependabot auto-triage rules 検証用ダミー（ルール対象2 / OR 検証用）",
+  "dependencies": {
+    "minimist": "^0.0.8"
+  }
+}
