@@ -126,10 +126,18 @@ gh api "repos/$R/dependabot/alerts?per_page=100" \
 gh api "repos/$R/dependabot/alerts?per_page=100&state=auto_dismissed" \
   | jq -r 'length as $n | "auto_dismissed: \($n)件", (.[] | "  #\(.number)\t\(.dependency.manifest_path)\t\(.dependency.package.name)\t\(.security_advisory.severity)")'
 
-# リセット: auto_dismissed を全部 open に戻す（次のサイクルの前に実行）
-gh api "repos/$R/dependabot/alerts?per_page=100&state=auto_dismissed" -q '.[].number' \
-  | while read -r n; do gh api -X PATCH "repos/$R/dependabot/alerts/$n" -f state=open --silent; done
+# リセット: auto_dismissed と手動 dismissed を全部 open に戻す（次のサイクルの前に実行）
+for s in auto_dismissed dismissed; do
+  gh api "repos/$R/dependabot/alerts?per_page=100&state=$s" -q '.[].number' \
+    | while read -r n; do gh api -X PATCH "repos/$R/dependabot/alerts/$n" -f state=open --silent; done
+done
+
+# リセットできたか確認（open: 41件 になれば OK）
+gh api "repos/$R/dependabot/alerts?per_page=100" \
+  | jq -r 'map(.state) | group_by(.) | map("\(.[0]): \(length)件") | .[]'
 ```
+
+state を手で変えたアラートはルールの再適用対象から外れる可能性があります（それ自体がサイクル17の検証対象です）。もしそうだった場合、リセットを挟んだ後のサイクルは結果が信用できなくなるので、サイクル17を先に済ませて挙動を確定させてから残りに進むのが安全です。
 
 ## 検証サイクル
 
@@ -307,6 +315,106 @@ Rules: `Open a pull request`
 
 結果:
 
+## 検証サイクル（状態遷移）
+
+ここからはルールの条件ではなく、アラートの state とルールの相互作用を見ます。「ルールがいつ評価されるのか」を切り分けるのが目的です。
+
+時間がない場合はサイクル16〜18を優先してください。本番で詰まっている経路そのものです。
+
+### 16. 手動 dismiss 済みのアラートにルールを作る
+
+先に対象を手動 dismiss してからルールを作ります。
+
+```bash
+# pkg-a の #1 を手動 dismiss（本番と同じ理由・コメント）
+gh api -X PATCH "repos/$R/dependabot/alerts/1" \
+  -f state=dismissed -f dismissed_reason=not_used \
+  -f dismissed_comment="検証用の手動 dismiss"
+
+# 確認
+gh api "repos/$R/dependabot/alerts/1" \
+  -q '"\(.state)\treason=\(.dismissed_reason // "-")\tauto_dismissed_at=\(.auto_dismissed_at // "-")"'
+```
+
+この状態で `manifest:docs/legacy-app/app/webroot/js/pkg-a/package-lock.json` のルールを作成します。
+
+期待: pkg-a の残り6件は `auto_dismissed` になる。#1 がどうなるかが焦点で、`dismissed` のまま据え置きか、`auto_dismissed` に上書きされるかを見ます。
+
+結果:
+
+### 17. 手動 dismiss → ルール作成 → 手動 reopen（本番 #448 と同じ経路）
+
+サイクル16のルールを残したまま、#1 を reopen します。
+
+```bash
+gh api -X PATCH "repos/$R/dependabot/alerts/1" -f state=open
+```
+
+期待: ルールの条件には合致しているので、再評価されれば `auto_dismissed` に戻るはず。
+
+観測は直後 / 10分後 / 1時間後 / 翌日。本番では12時間放置しても `open` のままでした。ここで同じ結果が出れば「手動で state を変えたアラートは、ルールの再適用対象にならない」と確定できます。
+
+結果:
+
+### 18. ルールの Disable → Enable で再評価されるか
+
+サイクル17で `open` のまま変化しなかった場合に実施します。ルールを一度 Disabled にして、また Enabled に戻します。
+
+期待: ルールの状態変更が再評価のトリガーになるなら `auto_dismissed` に変わる。本番では変化しませんでした。
+
+あわせて、ルールをいったん削除して同じ内容で作り直した場合も試します。新規作成なら遡及適用（サイクル1で確認する挙動）が走るはずなので、これで戻れば「再評価はルール新規作成時のみ」と言えます。
+
+結果:
+
+### 19. ルール削除時に auto_dismissed はどうなるか
+
+サイクル1のルールを削除します。
+
+期待: `auto_dismissed` のまま残るか、`open` に戻るか。
+
+これは検証の進め方にも影響します。削除で open に戻るなら、サイクル間のリセット作業が不要になります。
+
+結果:
+
+### 20. ルール有効中に新規発生したアラートは即 auto_dismissed になるか
+
+`packages/app` を対象にしたルール（`manifest:packages/app/package-lock.json`）を作成し、有効なまま新しい脆弱依存を追加して push します。
+
+```bash
+mkdir -p packages/late-arrival
+cat > packages/late-arrival/package.json <<'EOF'
+{
+  "name": "late-arrival",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ルール有効中に発生したアラートの扱いを見るためのダミー",
+  "dependencies": {
+    "ini": "1.3.5"
+  }
+}
+EOF
+(cd packages/late-arrival && npm install ini@1.3.5 --package-lock-only --no-audit --no-fund)
+git add packages/late-arrival && git commit -m "test: ルール有効中の新規アラート検証用フィクスチャを追加" && git push
+```
+
+ルールの条件は `packages/app` なので、この新規アラートは対象外です。そのうえで、対象に含めたルール（`manifest:packages/late-arrival/package-lock.json`）を先に作っておいてから push する、という順序で試します。
+
+期待: アラート発生と同時に `auto_dismissed` になる。なれば「ルールはアラート発生時に評価される」ことが確定し、サイクル17の結果とあわせて評価タイミングが特定できます。
+
+結果:
+
+### 状態遷移まとめ
+
+| 起点の state | 操作 | 結果 |
+| --- | --- | --- |
+| `open` | ルール作成 | |
+| 手動 `dismissed` | ルール作成 | |
+| 手動 `dismissed` → ルール作成 | 手動 reopen | |
+| `auto_dismissed` | 手動 reopen | |
+| `auto_dismissed` | ルール Disable → Enable | |
+| `auto_dismissed` | ルール削除 | |
+| （新規発生） | ルール有効中に push | |
+
 ## まとめ
 
 | # | 条件 | 期待 | 結果 |
@@ -326,3 +434,8 @@ Rules: `Open a pull request`
 | 13 | EPSS Score | 18件 | |
 | 14 | Until a patch is available | 7件 | |
 | 15 | Open a pull request | PR 作成 | |
+| 16 | 手動 dismiss 済みにルール作成 | 据え置きか上書きか | |
+| 17 | 手動 dismiss → ルール → reopen | 再 dismiss されるか | |
+| 18 | ルール Disable → Enable で再評価 | 再 dismiss されるか | |
+| 19 | ルール削除時の auto_dismissed | 据え置きか open か | |
+| 20 | ルール有効中の新規アラート | 即 auto_dismissed | |
