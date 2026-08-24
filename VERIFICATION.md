@@ -445,9 +445,16 @@ gh api -X PATCH "repos/$R/dependabot/alerts/1" -f state=open
 
 期待: `auto_dismissed` のまま残るか、`open` に戻るか。
 
-これは検証の進め方にも影響します。削除で open に戻るなら、サイクル間のリセット作業が不要になります。
+結果: `open` に戻る。2026-08-24 実施。
 
-結果:
+`ghsa_id:GHSA-p8p7-x288-28g6` のルール（#27 を 02:17:37Z に `auto_dismissed` にしていた）を削除したところ、#27 は `open` に戻り `auto_dismissed_at` も `null` にクリアされました。
+
+重要なのは、この復元が「システムによる状態変更」である点です。サイクル17で確定した「手動で state を変えたアラートは再適用対象外」の制約には引っかかりません。実際、削除後の #27 は後続のルールで再び dismiss できました。
+
+運用上の含意。
+
+- ルールを消せば、そのルールが閉じたアラートは open に戻る。適用範囲を間違えても取り返しがつく
+- 検証時のリセットは、手動 PATCH ではなくルール削除で行うほうが安全。手動 PATCH はアラートを永久に対象外にしてしまう
 
 ### 20. ルール有効中に新規発生したアラートは即 auto_dismissed になるか
 
@@ -510,5 +517,5 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 | 16 | 手動 dismiss 済みにルール作成 | 据え置きか上書きか | 据え置き。残り6件は即 auto_dismissed |
 | 17 | 手動 dismiss → ルール → reopen | 再 dismiss されるか | 再適用されない（確定）|
 | 18 | ルール Disable → Enable で再評価 | 再 dismiss されるか | |
-| 19 | ルール削除時の auto_dismissed | 据え置きか open か | |
+| 19 | ルール削除時の auto_dismissed | 据え置きか open か | open に戻る（確定）|
 | 20 | ルール有効中の新規アラート | 即 auto_dismissed | |
