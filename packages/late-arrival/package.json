@@ -1,0 +1,9 @@
+{
+  "name": "late-arrival",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependabot auto-triage rules 検証用ダミー（ルール有効中に発生した新規アラートの扱いを見る）",
+  "dependencies": {
+    "ini": "^1.3.5"
+  }
+}
