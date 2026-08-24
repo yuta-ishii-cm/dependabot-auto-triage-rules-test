@@ -423,7 +423,18 @@ manifest:docs/legacy-app/app/webroot/js/pkg-b/package-lock.json
 
 Rules: `Open a pull request`
 
-結果: 今回の環境では PR の作成を確認できなかった。2026-08-24 実施。
+結果: PR ルールは新規アラートの発生時にだけ発火する。既存アラートには効かない。2026-08-24 確定。
+
+決定的だったのは次の対照実験です。
+
+1. 既存アラート15件（node-forge、全て open・修正版あり・dismiss ルールなし・security updates 無効）を対象に `package:node-forge` の PR ルールを作成 → 5時間以上 PR もブランチも作られず
+2. `package:ini` の PR ルールを先に作成してから、`ini@1.3.5` を含む新規 manifest を push → push 09:30:36Z、アラート #42 発生 09:30:40Z、PR #2 作成 09:31:45Z
+
+同じアクションが、既存アラートには5時間無反応で、新規アラートには65秒で反応しました。dismiss ルールが作成時に既存アラートへ遡及するのとは対照的に、`Open a pull request` はアラート発生イベントにのみ紐づいています。
+
+ドキュメントの「rules apply to both future and current alerts」は dismiss には当てはまりますが、PR アクションは future のみです。
+
+なお PR が作られたあともアラート #42 は `open` のままです（PR ルールは dismiss しない）。
 
 `package:node-forge` を対象に `Open a pull request to resolve alerts` のみを選んだルールを作成し、30分観測しましたが PR も `dependabot/` ブランチも作られませんでした。
 
@@ -434,9 +445,7 @@ Rules: `Open a pull request`
 - 同じパッケージで過去に Dependabot が PR を作った実績がある
 - Dependabot security updates は Disabled（ルール側の注記「This will only target repositories without security updates enabled」と整合）
 
-アラートの個別ページには `Review security update` ボタンと `build(deps): bump node-forge from 0.9.0 to 1.4.0 in /packages/app` の表示があり、更新内容自体は計算済みでした。つまり「更新できないから PR が作られない」わけではありません。作れる状態にあるのに、ルールによる自動作成が走っていません。
-
-潰せていない可能性が残るため「機能しない」とは断定できません。security updates 無効という条件の解釈、`dependabot.yml` の不在、単に所要時間が長い可能性などが考えられます。
+既存アラートの個別ページには `Review security update` ボタンが出ており更新内容は計算済みでした。つまり既存アラート側は「更新できない」のではなく「トリガーが無い」状態です。手動でボタンを押せば PR は作れます。
 
 ### 途中で判明したこと
 
@@ -586,7 +595,7 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 
 期待: アラート発生と同時に `auto_dismissed` になる。なれば「ルールはアラート発生時に評価される」ことが確定し、サイクル17の結果とあわせて評価タイミングが特定できます。
 
-結果: 未実施（検証を見送り）。なお関連する観測として、既存ルールが有効なまま対象アラートが open に戻っても反応しないことは確認済み（ルール削除で15件が open に戻った後、有効な PR ルールが15分反応せず）。
+結果: PR アクション版で実施。`package:ini` の PR ルールを先に作成し、`ini@1.3.5` の新規 manifest を push したところ、アラート発生（09:30:40Z）の65秒後に PR #2 が作成された。ルール有効中の新規アラートには即座に効く。dismiss アクション版は未実施だが、同じ発生時評価が働くと推定できる。
 
 ### 状態遷移まとめ
 
@@ -598,7 +607,7 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 | `auto_dismissed` | 手動 reopen | 未実施（手動操作した時点で以降は対象外になるため、17と同じ結果になると推定） |
 | `auto_dismissed` | ルール Disable → Enable | 未実施 |
 | `auto_dismissed` | ルール削除 | `open` に戻る。削除で戻ったアラートは別ルールで再適用可能 |
-| （新規発生） | ルール有効中に push | 未実施 |
+| （新規発生） | ルール有効中に push | PR ルールは発生65秒後に発火（dismiss ルール版は未実施） |
 
 ## まとめ
 
@@ -618,9 +627,9 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 | 12 | CWE | 10件 | cwe:1321 で成立。数字のみ指定 |
 | 13 | EPSS Score | 18件 | 未実施（キー名は epss）|
 | 14 | Until a patch is available | 7件 | 修正版なしのみ対象（確定）|
-| 15 | Open a pull request | PR 作成 | 30分では確認できず（断定は保留）|
+| 15 | Open a pull request | PR 作成 | 新規アラートのみ発火（65秒で PR）。既存には効かない |
 | 16 | 手動 dismiss 済みにルール作成 | 据え置きか上書きか | 据え置き。残り6件は即 auto_dismissed |
 | 17 | 手動 dismiss → ルール → reopen | 再 dismiss されるか | 再適用されない（確定）|
 | 18 | ルール Disable → Enable で再評価 | 再 dismiss されるか | 未実施 |
 | 19 | ルール削除時の auto_dismissed | 据え置きか open か | open に戻る（確定）|
-| 20 | ルール有効中の新規アラート | 即 auto_dismissed | 未実施 |
+| 20 | ルール有効中の新規アラート | 即 auto_dismissed | PR アクション版で実施。発生65秒後に PR 作成。dismiss 版は未実施 |
