@@ -340,7 +340,33 @@ manifest:docs/legacy-app/app/webroot/js/pkg-a/package-lock.json
 
 Rules: `Dismiss alerts` → `Until a patch is available`
 
-期待: 7件が `auto_dismissed`。`Indefinitely` との差は dismissed_reason や再オープン条件に出るはずなので、以下も確認します。
+結果: 修正版が存在しないアラートだけが対象。2026-08-24 実施。
+
+| # | パッケージ | 修正版 | 結果 |
+| --- | --- | --- | --- |
+| #27 | request | なし | `auto_dismissed` 02:43:58Z（ルール作成の数秒後） |
+| #29 | form-data | 2.5.4 あり | `open` のまま（7分経過） |
+| #32 | form-data | 2.5.6 あり | `open` のまま（7分経過） |
+
+`Until patch is available` は「修正版がまだ出ていないアラートを、修正版が出るまで伏せておく」という意味です。既に修正版があるアラートは最初から対象外になります。
+
+`Indefinitely` との使い分け。
+
+- `Indefinitely`: 修正版の有無に関係なく閉じる。使っていないディレクトリのアラートを黙らせる用途
+- `Until patch is available`: 今すぐ直せないものだけ伏せる。修正版が出たら再び表に出てくる
+
+### ルール削除で戻ったアラートは再適用の対象になる
+
+#27 は「ルールで dismiss → ルール削除で open に復帰 → 別ルールで再び dismiss」という経路をたどりました。
+
+サイクル17で確定した「手動で state を変えたアラートは対象外」とは対照的です。同じ `open` でも、そこに至った経緯で扱いが変わります。
+
+| 経緯 | 再適用 |
+| --- | --- |
+| 手動 dismiss → 手動 reopen（#1） | されない |
+| ルールで dismiss → ルール削除で復帰（#27） | される |
+
+参考: 元の手順で確認しようとしていたコマンド。
 
 ```bash
 gh api "repos/$R/dependabot/alerts?per_page=100&state=auto_dismissed" \
@@ -512,7 +538,7 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 | 11 | GHSA ID | 1件 | |
 | 12 | CWE | 10件 | |
 | 13 | EPSS Score | 18件 | |
-| 14 | Until a patch is available | 7件 | |
+| 14 | Until a patch is available | 7件 | 修正版なしのみ対象（確定）|
 | 15 | Open a pull request | PR 作成 | |
 | 16 | 手動 dismiss 済みにルール作成 | 据え置きか上書きか | 据え置き。残り6件は即 auto_dismissed |
 | 17 | 手動 dismiss → ルール → reopen | 再 dismiss されるか | 再適用されない（確定）|
