@@ -407,9 +407,27 @@ gh api -X PATCH "repos/$R/dependabot/alerts/1" -f state=open
 
 期待: ルールの条件には合致しているので、再評価されれば `auto_dismissed` に戻るはず。
 
-観測は直後 / 10分後 / 1時間後 / 翌日。`open` のままなら「手動で state を変えたアラートは、ルールの再適用対象にならない」と判断できます。
+結果: 再適用されない。2026-08-24 実施。
 
-結果:
+02:08:08Z に #1 を reopen。以降25分観測しても `open` のまま変化なし。
+
+決定的だったのは `cwe:1321` のルールを新規作成したときの挙動です。#1 は CWE-1321 を持つため条件に合致しますが、対象になりませんでした。
+
+| # | ルール作成前の state | CWE-1321 | 結果 |
+| --- | --- | --- | --- |
+| #8 (pkg-b) | open | あり | `auto_dismissed` 02:33:05Z |
+| #28 (unpatched) | open | あり | `auto_dismissed` 02:33:05Z |
+| #1 (pkg-a) | open（手動 reopen 済み） | あり | `open` のまま |
+
+同じルール・同じ瞬間の判定で、条件に合致する他の open アラートは閉じられ、#1 だけが飛ばされました。#1 と他の違いは「手動で state を変更した履歴があるかどうか」だけです。
+
+結論: 一度でも手動で dismiss / reopen したアラートは、以降どのルールを新規作成しても auto-triage の対象外になります。ルールの不具合ではなく、手動操作を尊重する仕様と考えられます。
+
+運用上の含意が2つあります。
+
+1. ルールの動作確認を「手動 reopen」で行うことはできません。必ず自然発生したアラートか、手を触れていないアラートで確認する必要があります。
+
+2. 過去に手動 dismiss したアラートは、あとからルールを作っても `auto_dismissed` には変わりません。手動 dismiss 済みのものはそのまま放置してよく、ルールは新規アラートに対して効きます。
 
 ### 18. ルールの Disable → Enable で再評価されるか
 
@@ -490,7 +508,7 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 | 14 | Until a patch is available | 7件 | |
 | 15 | Open a pull request | PR 作成 | |
 | 16 | 手動 dismiss 済みにルール作成 | 据え置きか上書きか | 据え置き。残り6件は即 auto_dismissed |
-| 17 | 手動 dismiss → ルール → reopen | 再 dismiss されるか | |
+| 17 | 手動 dismiss → ルール → reopen | 再 dismiss されるか | 再適用されない（確定）|
 | 18 | ルール Disable → Enable で再評価 | 再 dismiss されるか | |
 | 19 | ルール削除時の auto_dismissed | 据え置きか open か | |
 | 20 | ルール有効中の新規アラート | 即 auto_dismissed | |
