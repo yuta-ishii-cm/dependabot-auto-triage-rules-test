@@ -205,16 +205,18 @@ manifest:docs/legacy-app/app/webroot/js/pkg-a/package-lock.json,docs/legacy-app/
 
 フィールドの型によってエラーの出方が変わります。ここが最大の落とし穴です。
 
-| 入力 | フィールドの型 | 結果 |
-| --- | --- | --- |
-| `severity:critical,high` | 列挙型 | 保存できない。`severity has an invalid value: critical,high` |
-| `package:uuid,qs` | 自由入力 | エラーなく保存でき、`Matches package:uuid,qs` と表示される。ただし該当0件（10分以上経過しても変化なし） |
+| 入力 | 結果 |
+| --- | --- |
+| `severity:critical,high` | 保存できない。`severity has an invalid value: critical,high` |
+| `manifest:docs/legacy-app/**` | 保存できない。`manifest has an invalid value: docs/legacy-app/**` |
+| `package:uuid,qs` | エラーなく保存でき `Matches package:uuid,qs` と表示。ただし該当0件（21分経過しても変化なし） |
+| `manifest:<pkg-a のパス>,<pkg-b のパス>` | エラーなく保存でき一覧にも表示。ただし該当0件（9分経過しても変化なし。対象9件はすべて `open` のまま） |
 
-列挙型（`severity` `scope` `ecosystem` `classification`）はバリデーションで弾かれるので、その場で気づけます。
+`manifest:` はワイルドカードを弾くので値の検証自体はしています。ところがカンマ区切りは検証をすり抜け、そのうえ何にも当たりません。もっとも危険な組み合わせです。
 
-自由入力（`package` `manifest` `cwe` `cve_id` `ghsa_id`）は黙って保存され、カンマを含む文字列そのものを1つの値として探しにいくため、1件も当たりません。設定できたように見えて何も起きない状態になります。
+選択肢が決まっている `severity` はカンマをエラーとして弾きます。その場で気づけます。
 
-`manifest:` が自由入力である点が実務上いちばん危険です。複数パスを1本のルールでカバーしようとしてカンマでつなぐと、エラーも出ず、ルール一覧にもそれらしく表示され、それでいて何も dismiss されません。
+一方 `package` と `manifest` はカンマを含む文字列をそのまま1つの値として受け取り、該当なしになります。ルール一覧にもそれらしく表示されるため、設定できたように見えて何も起きません。
 
 ### 同一キーをスペースで並べると OR
 
