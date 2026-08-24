@@ -216,7 +216,27 @@ manifest:docs/legacy-app/app/webroot/js/pkg-a/package-lock.json,docs/legacy-app/
 
 `manifest:` が自由入力である点が実務上いちばん危険です。複数パスを1本のルールでカバーしようとしてカンマでつなぐと、エラーも出ず、ルール一覧にもそれらしく表示され、それでいて何も dismiss されません。
 
-対処: 値ごとにルールを分けること。public preview 中は1リポジトリ10ルールまでなので、カバーしたいパスが多い場合は上限にも注意が必要です。
+### 同一キーをスペースで並べると OR
+
+カンマは使えませんが、同じキーを繰り返してスペースで区切ると OR になります。
+
+```
+package:uuid package:qs
+```
+
+これで #30（qs）と #31（uuid）の2件が同時に `auto_dismissed` になりました（02:59:34Z、両件同一）。
+
+スペース区切りの意味はキーが同じかどうかで変わります。
+
+| 書き方 | 意味 |
+| --- | --- |
+| `package:uuid package:qs` | OR |
+| `package:qs scope:development` | AND |
+| `package:uuid,qs` | 使えない（0件、またはエラー） |
+
+「メタデータの種類ごとに AND、同じ種類の中では OR」という動作です。入力欄の説明文 `Rules will be applied for alerts matching all included metadata.` は、種類単位で読む必要があります。
+
+対処: 複数値を指定したい場合はカンマではなくキーの繰り返しで書くこと。ルールを分ける必要はありません。
 
 なお GitHub の発表ブログに掲載されているルール作成画面のスクリーンショットには `severity:low,medium scope:development manifest:otter/package-lock.json` という作例が写っています。この記法は現在の UI ではバリデーションエラーになります。
 
@@ -543,7 +563,7 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 
 | # | 条件 | 期待 | 結果 |
 | --- | --- | --- | --- |
-| 1 | manifest 複数値 | 9件 | カンマ区切りは不可（確定）|
+| 1 | manifest 複数値 | 9件 | カンマ不可。キーの繰り返しで OR |
 | 2 | reopen 後の再適用 | 再 dismiss | |
 | 3 | manifest ワイルドカード | エラー | |
 | 4 | severity 複数値 | 21件 | バリデーションエラーで保存不可 |
