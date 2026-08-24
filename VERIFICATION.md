@@ -258,7 +258,7 @@ gh api -X PATCH "repos/$R/dependabot/alerts/<番号>" -f state=open
 
 観測は時間を空けて複数回（直後 / 10分後 / 翌日）。
 
-結果:
+結果: サイクル17で確定。手動で reopen したアラートは、どのルールを新規作成しても再適用されない。この方法での動作確認は成立しない。
 
 ### 3. manifest ワイルドカード
 
@@ -268,7 +268,7 @@ manifest:docs/legacy-app/**
 
 期待: 保存時に `manifest has an invalid value` でエラー。`*` 単体、前方一致（`manifest:docs/legacy-app`）も同様に試す。
 
-結果:
+結果: UI で確認。`manifest has an invalid value: docs/legacy-app/**` のバリデーションエラーになり保存できない。
 
 ### 4. severity 複数値
 
@@ -278,7 +278,7 @@ severity:critical,high
 
 期待: 21件（critical 6 + high 15）。manifest をまたいで効くこと、カンマ区切りが OR であることをここでも確認。
 
-結果:
+結果: `severity has an invalid value: critical,high` で保存不可。複数値はキーの繰り返し（`severity:critical severity:high`）で書く。
 
 ### 5. scope
 
@@ -288,7 +288,7 @@ scope:development
 
 期待: 2件（`packages/dev-tools` の qs のみ）。
 
-結果:
+結果: 単独では未実施。ただしサイクル8の `package:qs scope:development` で development の2件だけに効くことは確認済み。
 
 ### 6. ecosystem
 
@@ -298,7 +298,7 @@ ecosystem:pip
 
 期待: 9件（`services/api/requirements.txt` のみ）。
 
-結果:
+結果: 期待どおり9件。`services/api/requirements.txt` の pip 9件が即 `auto_dismissed`。npm 32件は無傷。パッケージ名の大文字小文字（PyYAML/pyyaml）もまとめて対象になった。
 
 ### 7. package
 
@@ -310,7 +310,7 @@ package:qs
 
 あわせて大文字小文字の扱いも確認します。pip 側は同じライブラリが advisory によって `PyYAML` と `pyyaml`、`Jinja2` と `jinja2` に分かれているため、`package:pyyaml` が両方に当たるかを見れば判定できます。
 
-結果:
+結果: `package:node-forge` で15件が即 `auto_dismissed`。単一パッケージ指定は成立。pip 側の大文字小文字の切り分けは未実施。
 
 ### 8. 異なるキーの組み合わせ（AND か）
 
@@ -320,7 +320,7 @@ package:qs scope:development
 
 期待: 2件。サイクル7の3件から推移依存の1件が落ちれば、異なるキーはスペース区切りで AND。
 
-結果:
+結果: 期待どおり2件。`package:qs` の3件のうち development の2件だけが閉じ、runtime の1件（推移依存）は open のまま。異なるキーは AND で確定。
 
 ### 9. patch availability
 
@@ -330,7 +330,7 @@ has:patch
 
 期待: 40件。修正版が存在しない #27（`request` / GHSA-p8p7-x288-28g6）だけが `open` で残る。
 
-結果:
+結果: このキーは存在しない。UI の候補一覧に `has:` に相当するキーが無く、Patch availability はアクション側の `Until patch is available` として表現される。条件としては書けない。
 
 ### 10. CVE ID
 
@@ -340,7 +340,7 @@ CVE-ID:CVE-2019-10744
 
 期待: 1件（#1 lodash critical）。
 
-結果:
+結果: 未実施。キー名はドキュメントの `CVE-ID` ではなく `cve_id`（UI 候補で確認）。
 
 ### 11. GHSA ID
 
@@ -350,7 +350,7 @@ GHSA-ID:GHSA-p8p7-x288-28g6
 
 期待: 1件（#27 request）。
 
-結果:
+結果: `ghsa_id:GHSA-p8p7-x288-28g6` で #27 の1件だけが即 `auto_dismissed`。キー名はドキュメントの `GHSA-ID` ではなく `ghsa_id`。
 
 ### 12. CWE
 
@@ -360,7 +360,7 @@ cwe:CWE-1321
 
 期待: 10件。ただし CWE は auto-triage rules のドキュメントには「指定できるメタデータ」として挙がっている一方、alert filters のリファレンスには載っていません。キー名が `cwe:` で合っているかを含めて確認します。通らなければ UI のサジェストで正しいキー名を確認してください。
 
-結果:
+結果: `cwe:1321` で成立。値は `CWE-1321` ではなく数字のみ。条件に合致する open アラートが複数マニフェストにまたがって閉じた（手動操作済みの #1 だけ対象外）。
 
 ### 13. EPSS Score
 
@@ -370,7 +370,7 @@ epss_percentage:>0.01
 
 期待: 18件。`>=`、範囲指定（`0.0..0.01`）が使えるかもあわせて確認。
 
-結果:
+結果: 未実施。キー名はドキュメントの `epss_percentage` ではなく `epss`。候補の説明は比較演算子（`>n` `<n` `>=n` `<=n`）のみで、範囲指定の記載は無い。
 
 ### 14. アクション: Until a patch is available
 
@@ -542,7 +542,7 @@ gh api -X PATCH "repos/$R/dependabot/alerts/1" -f state=open
 
 あわせて、ルールをいったん削除して同じ内容で作り直した場合も試します。新規作成なら遡及適用（サイクル1で確認する挙動）が走るはずなので、これで戻れば「再評価はルール新規作成時のみ」と言えます。
 
-結果:
+結果: 未実施。サイクル17が「新規作成でも再適用されない」で確定したため、Disable→Enable で覆る見込みは薄いと判断。
 
 ### 19. ルール削除時に auto_dismissed はどうなるか
 
@@ -586,41 +586,41 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 
 期待: アラート発生と同時に `auto_dismissed` になる。なれば「ルールはアラート発生時に評価される」ことが確定し、サイクル17の結果とあわせて評価タイミングが特定できます。
 
-結果:
+結果: 未実施（検証を見送り）。なお関連する観測として、既存ルールが有効なまま対象アラートが open に戻っても反応しないことは確認済み（ルール削除で15件が open に戻った後、有効な PR ルールが15分反応せず）。
 
 ### 状態遷移まとめ
 
 | 起点の state | 操作 | 結果 |
 | --- | --- | --- |
-| `open` | ルール作成 | |
-| 手動 `dismissed` | ルール作成 | |
-| 手動 `dismissed` → ルール作成 | 手動 reopen | |
-| `auto_dismissed` | 手動 reopen | |
-| `auto_dismissed` | ルール Disable → Enable | |
-| `auto_dismissed` | ルール削除 | |
-| （新規発生） | ルール有効中に push | |
+| `open` | ルール作成 | 即 `auto_dismissed`（数秒） |
+| 手動 `dismissed` | ルール作成 | 据え置き。上書きされない |
+| 手動 `dismissed` → ルール作成 | 手動 reopen | `open` のまま。再適用されない |
+| `auto_dismissed` | 手動 reopen | 未実施（手動操作した時点で以降は対象外になるため、17と同じ結果になると推定） |
+| `auto_dismissed` | ルール Disable → Enable | 未実施 |
+| `auto_dismissed` | ルール削除 | `open` に戻る。削除で戻ったアラートは別ルールで再適用可能 |
+| （新規発生） | ルール有効中に push | 未実施 |
 
 ## まとめ
 
 | # | 条件 | 期待 | 結果 |
 | --- | --- | --- | --- |
 | 1 | manifest 複数値 | 9件 | カンマ不可。キーの繰り返しで OR |
-| 2 | reopen 後の再適用 | 再 dismiss | |
-| 3 | manifest ワイルドカード | エラー | |
+| 2 | reopen 後の再適用 | 再 dismiss | 再適用されない（17で確定）|
+| 3 | manifest ワイルドカード | エラー | エラーで保存不可 |
 | 4 | severity 複数値 | 21件 | バリデーションエラーで保存不可 |
-| 5 | scope | 2件 | |
-| 6 | ecosystem | 9件 | |
-| 7 | package | 3件 | |
-| 8 | 異なるキーの AND | 2件 | |
-| 9 | has:patch | 40件 | |
-| 10 | CVE ID | 1件 | |
-| 11 | GHSA ID | 1件 | |
-| 12 | CWE | 10件 | |
-| 13 | EPSS Score | 18件 | |
+| 5 | scope | 2件 | 単独未実施（8の AND で機能は確認）|
+| 6 | ecosystem | 9件 | 9件で成立 |
+| 7 | package | 3件 | node-forge 15件で成立 |
+| 8 | 異なるキーの AND | 2件 | 2件で成立 |
+| 9 | has:patch | 40件 | キー自体が存在しない |
+| 10 | CVE ID | 1件 | 未実施（キー名は cve_id）|
+| 11 | GHSA ID | 1件 | 1件で成立（ghsa_id）|
+| 12 | CWE | 10件 | cwe:1321 で成立。数字のみ指定 |
+| 13 | EPSS Score | 18件 | 未実施（キー名は epss）|
 | 14 | Until a patch is available | 7件 | 修正版なしのみ対象（確定）|
 | 15 | Open a pull request | PR 作成 | 30分では確認できず（断定は保留）|
 | 16 | 手動 dismiss 済みにルール作成 | 据え置きか上書きか | 据え置き。残り6件は即 auto_dismissed |
 | 17 | 手動 dismiss → ルール → reopen | 再 dismiss されるか | 再適用されない（確定）|
-| 18 | ルール Disable → Enable で再評価 | 再 dismiss されるか | |
+| 18 | ルール Disable → Enable で再評価 | 再 dismiss されるか | 未実施 |
 | 19 | ルール削除時の auto_dismissed | 据え置きか open か | open に戻る（確定）|
-| 20 | ルール有効中の新規アラート | 即 auto_dismissed | |
+| 20 | ルール有効中の新規アラート | 即 auto_dismissed | 未実施 |
