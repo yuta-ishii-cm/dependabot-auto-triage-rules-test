@@ -434,6 +434,8 @@ Rules: `Open a pull request`
 - 同じパッケージで過去に Dependabot が PR を作った実績がある
 - Dependabot security updates は Disabled（ルール側の注記「This will only target repositories without security updates enabled」と整合）
 
+アラートの個別ページには `Review security update` ボタンと `build(deps): bump node-forge from 0.9.0 to 1.4.0 in /packages/app` の表示があり、更新内容自体は計算済みでした。つまり「更新できないから PR が作られない」わけではありません。作れる状態にあるのに、ルールによる自動作成が走っていません。
+
 潰せていない可能性が残るため「機能しない」とは断定できません。security updates 無効という条件の解釈、`dependabot.yml` の不在、単に所要時間が長い可能性などが考えられます。
 
 ### 途中で判明したこと
@@ -447,6 +449,22 @@ Rules: `Open a pull request`
 PR ルールを有効にしたまま、対象15件を（dismiss ルールの削除によって）`open` に戻し、15分観測しましたが PR は作られませんでした。その後ルールを削除して同じ内容で作り直すと、評価は走ります（作成時点で対象が評価される）。
 
 ルールが評価されるのはルールの新規作成時と削除時であって、アラート側の状態が変わったときに既存ルールが再スキャンされるわけではない、という理解と整合します。
+
+## アラートのタイムラインにルール適用が記録される
+
+個別のアラートページを開くと、ルールによる状態変更がタイムラインに残っています。
+
+```
+dependabot dismissed this due to an alert rule
+  Repository rule created and Dismiss node-forge was applied
+
+dependabot reopened this
+  Repository rule deleted: Dismiss node-forge
+```
+
+`Repository rule created and ... was applied` という文言から、適用のトリガーがルールの作成であることが読み取れます。削除時も `Repository rule deleted` として reopen が記録されます。
+
+API の観測結果と一致しており、どのルールがどのアラートを閉じたのかを後から追う手段としても使えます。
 
 ## 検証サイクル（状態遷移）
 
