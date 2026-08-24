@@ -423,9 +423,30 @@ manifest:docs/legacy-app/app/webroot/js/pkg-b/package-lock.json
 
 Rules: `Open a pull request`
 
-期待: minimist の更新 PR が作られる。Dependabot security updates は無効化済みなので選択できるはず。選択肢がグレーアウトしていればその旨を記録。
+結果: 今回の環境では PR の作成を確認できなかった。2026-08-24 実施。
 
-結果:
+`package:node-forge` を対象に `Open a pull request to resolve alerts` のみを選んだルールを作成し、30分観測しましたが PR も `dependabot/` ブランチも作られませんでした。
+
+条件は揃えてあります。
+
+- 対象の15件はすべて `open`（dismiss ルールは削除済み）
+- node-forge は `packages/app` の直接依存で、修正版 1.4.0 が存在する
+- 同じパッケージで過去に Dependabot が PR を作った実績がある
+- Dependabot security updates は Disabled（ルール側の注記「This will only target repositories without security updates enabled」と整合）
+
+潰せていない可能性が残るため「機能しない」とは断定できません。security updates 無効という条件の解釈、`dependabot.yml` の不在、単に所要時間が長い可能性などが考えられます。
+
+### 途中で判明したこと
+
+最初は `package:uuid` を対象にしていましたが、これは検証対象の選定ミスでした。uuid は `packages/unpatched` の推移依存で、親の `request@2.88.2` に修正版が存在しません。現在 3.4.0 に対し修正版は 11.1.1 で、親を更新しない限り上げられないため、そもそも PR を作れる経路がありませんでした。
+
+また、dismiss ルールと PR ルールが同じアラートに当たると dismiss が優先されます。ドキュメントにも `Dismissal rules always act before rules which trigger Dependabot pull requests.` と明記されています。PR が作られないときは、まず他の dismiss ルールが先に閉じていないかを疑うべきです。
+
+### 既存ルールは open に戻ったアラートを拾わない
+
+PR ルールを有効にしたまま、対象15件を（dismiss ルールの削除によって）`open` に戻し、15分観測しましたが PR は作られませんでした。その後ルールを削除して同じ内容で作り直すと、評価は走ります（作成時点で対象が評価される）。
+
+ルールが評価されるのはルールの新規作成時と削除時であって、アラート側の状態が変わったときに既存ルールが再スキャンされるわけではない、という理解と整合します。
 
 ## 検証サイクル（状態遷移）
 
@@ -579,7 +600,7 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 | 12 | CWE | 10件 | |
 | 13 | EPSS Score | 18件 | |
 | 14 | Until a patch is available | 7件 | 修正版なしのみ対象（確定）|
-| 15 | Open a pull request | PR 作成 | |
+| 15 | Open a pull request | PR 作成 | 30分では確認できず（断定は保留）|
 | 16 | 手動 dismiss 済みにルール作成 | 据え置きか上書きか | 据え置き。残り6件は即 auto_dismissed |
 | 17 | 手動 dismiss → ルール → reopen | 再 dismiss されるか | 再適用されない（確定）|
 | 18 | ルール Disable → Enable で再評価 | 再 dismiss されるか | |
