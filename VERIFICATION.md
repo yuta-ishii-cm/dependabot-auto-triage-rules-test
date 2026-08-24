@@ -199,12 +199,30 @@ manifest:docs/legacy-app/app/webroot/js/pkg-a/package-lock.json,docs/legacy-app/
 
 期待: 9件（pkg-a 7 + pkg-b 2）が `auto_dismissed`、残り32件は `open` のまま。
 
-- 9件なら A（遡及適用）と B（カンマ区切りが OR）が両方成立
-- 7件または2件なら B が不成立（AND または先頭のみ採用）
-- 0件なら A が不成立
-- 対象外の manifest が減っていれば D が不成立
+結果: カンマ区切りはルールでは使えない。2026-08-24 実施。
 
-結果:
+単一値の `manifest:` は正常に動作します（サイクル16で確認済み。6件が即 `auto_dismissed`、誤爆なし）。しかしカンマで複数値を並べると機能しません。
+
+フィールドの型によってエラーの出方が変わります。ここが最大の落とし穴です。
+
+| 入力 | フィールドの型 | 結果 |
+| --- | --- | --- |
+| `severity:critical,high` | 列挙型 | 保存できない。`severity has an invalid value: critical,high` |
+| `package:uuid,qs` | 自由入力 | エラーなく保存でき、`Matches package:uuid,qs` と表示される。ただし該当0件（10分以上経過しても変化なし） |
+
+列挙型（`severity` `scope` `ecosystem` `classification`）はバリデーションで弾かれるので、その場で気づけます。
+
+自由入力（`package` `manifest` `cwe` `cve_id` `ghsa_id`）は黙って保存され、カンマを含む文字列そのものを1つの値として探しにいくため、1件も当たりません。設定できたように見えて何も起きない状態になります。
+
+`manifest:` が自由入力である点が実務上いちばん危険です。複数パスを1本のルールでカバーしようとしてカンマでつなぐと、エラーも出ず、ルール一覧にもそれらしく表示され、それでいて何も dismiss されません。
+
+対処: 値ごとにルールを分けること。public preview 中は1リポジトリ10ルールまでなので、カバーしたいパスが多い場合は上限にも注意が必要です。
+
+なお GitHub の発表ブログに掲載されているルール作成画面のスクリーンショットには `severity:low,medium scope:development manifest:otter/package-lock.json` という作例が写っています。この記法は現在の UI ではバリデーションエラーになります。
+
+### アクションの排他
+
+`Dismiss alerts` → `Indefinitely` を選択すると `Open a pull request to resolve alerts` がグレーアウトして選択できなくなります。ドキュメントの記述どおりの挙動です。
 
 ### 2. 手動 reopen 後の再クローズ（検証 C）
 
@@ -525,10 +543,10 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 
 | # | 条件 | 期待 | 結果 |
 | --- | --- | --- | --- |
-| 1 | manifest 複数値 | 9件 | （単一値では成立。複数値は未実施）|
+| 1 | manifest 複数値 | 9件 | カンマ区切りは不可（確定）|
 | 2 | reopen 後の再適用 | 再 dismiss | |
 | 3 | manifest ワイルドカード | エラー | |
-| 4 | severity 複数値 | 21件 | |
+| 4 | severity 複数値 | 21件 | バリデーションエラーで保存不可 |
 | 5 | scope | 2件 | |
 | 6 | ecosystem | 9件 | |
 | 7 | package | 3件 | |
