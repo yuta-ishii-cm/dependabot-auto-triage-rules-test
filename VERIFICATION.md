@@ -103,6 +103,48 @@ auto-triage rules の Target alerts と、Dependabot alerts の絞り込みは�
 
 `severity` / `ecosystem` / `has` は値を打ち間違えると、絞り込みが消えて全件が対象になります。dismiss ルールでこれをやると意図の正反対（全アラートが対象）になるため、ルールを作った直後に必ず対象件数を確認する必要があります。
 
+## Target alerts に指定できるキー（UI サジェストの実測）
+
+New rule の Target alerts 欄をクリックすると候補が出ます。実際に指定できるキーは以下の11個。ドキュメントの記述とかなり食い違います。
+
+| UI のキー | 値の形式 | ドキュメント側の表記 |
+| --- | --- | --- |
+| `severity:` | critical, high, moderate, low | `severity` |
+| `package:` | package-name | `package` |
+| `ecosystem:` | ecosystem-name | `ecosystem` |
+| `scope:` | runtime, development | `scope`（development のみ記載） |
+| `manifest:` | manifest-name | `manifest` |
+| `cwe:` | cwe-number | 記載なし |
+| `cve_id:` | cve-id | `CVE-ID` |
+| `ghsa_id:` | ghsa-id | `GHSA-ID` |
+| `epss:` | `>n` `<n` `>=n` `<=n`（0.0〜1.0） | `epss_percentage` |
+| `malware:` | package, version | 記載なし |
+| `classification:` | malware, vulnerability | 記載なし |
+
+食い違いの要点。
+
+- `CVE-ID` → 実際は `cve_id`
+- `GHSA-ID` → 実際は `ghsa_id`
+- `epss_percentage` → 実際は `epss`。範囲指定（`0.0..0.01`）は候補の説明に無く、比較演算子のみ
+- `cwe` は alert filters のリファレンスに存在しないが、ルールでは使える
+- `malware` と `classification` はどちらのドキュメントにも無い
+
+### Patch availability に対応するキーは存在しない
+
+auto-triage rules のドキュメントは「指定できるメタデータ」に Patch availability を挙げていますが、候補一覧に該当キーがありません。`has:` もありません。
+
+これはアクション側の `Until patch is available` として表現されているためと考えられます。ドキュメントの一覧が条件とアクションを混ぜて記載しているせいで、フィルタとして書けるように読めてしまいます。
+
+### severity の値は moderate（API は medium）
+
+候補は `critical` `high` `moderate` `low` の4つ。`medium` は出てきません。
+
+一方 REST API のクエリパラメータは `severity=medium` を受け付けて17件返します。API とルール UI で値の名前が違うため、API での下見をそのままルールに貼ると通らない可能性があります。
+
+### relationship は指定できない
+
+alerts API では `relationship=direct` が機能しますが（direct 36 / transitive 5）、ルールの候補一覧にはありません。直接依存・推移依存での絞り込みはルールでは不可。
+
 ## 準備
 
 GitHub presets を2本とも Disabled にします。有効なままだと、プリセット由来の `auto_dismissed` とカスタムルールの効果が区別できません。
