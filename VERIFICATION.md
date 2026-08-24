@@ -413,7 +413,7 @@ gh api "repos/$R/dependabot/alerts?per_page=100&state=auto_dismissed" \
   | jq -r '.[] | "#\(.number)\t\(.dismissed_reason // "-")\t\(.dismissed_comment // "-")"'
 ```
 
-結果:
+結果: dismissed_reason / dismissed_comment の内訳確認は未実施。アクションの意味自体は上記のとおり確定。
 
 ### 15. アクション: Open a pull request
 
