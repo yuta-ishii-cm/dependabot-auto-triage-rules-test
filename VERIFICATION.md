@@ -139,7 +139,9 @@ auto-triage rules のドキュメントは「指定できるメタデータ」�
 
 候補は `critical` `high` `moderate` `low` の4つ。`medium` は出てきません。
 
-一方 REST API のクエリパラメータは `severity=medium` を受け付けて17件返します。API とルール UI で値の名前が違うため、API での下見をそのままルールに貼ると通らない可能性があります。
+実際に `severity:medium` を入力して保存を試したところ、`severity has an invalid value: medium` でバリデーションエラーになりました（2026-08-24 確認）。
+
+一方 REST API のクエリパラメータは `severity=medium` を受け付けて17件返します。API とルール UI で値の名前が違うため、API での下見をそのままルールに貼ると通りません。
 
 ### relationship は指定できない
 
