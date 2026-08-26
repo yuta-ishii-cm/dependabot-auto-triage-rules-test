@@ -1,8 +1,79 @@
 # 検証手順と結果
 
-カスタムルールを操作する API は提供されていないため、ルールの作成・削除は UI 操作のみです。1本作成して結果を観測し、削除してから次に進みます。
+GitHub の Dependabot auto-triage rules について、意図的に脆弱な依存を詰め込んだサンドボックスで挙動を実測した記録です。2026-08-24 から 08-26 にかけて実施しました。
 
-Settings → Advanced Security → Dependabot rules
+カスタムルールを操作する API は提供されていないため、ルールの作成・削除は UI 操作（Settings → Advanced Security → Dependabot rules）で行い、結果の観測は REST API で行っています。
+
+## 結論サマリ
+
+### 条件の書き方
+
+| 記法 | 結果 |
+| --- | --- |
+| `package:uuid package:qs`（同じキーの繰り返し） | OR |
+| `package:qs scope:development`（違うキー） | AND |
+| `package:uuid,qs`（カンマ区切り） | 保存できるが該当0件 |
+| `severity:critical,high`（カンマ区切り） | バリデーションエラー |
+| `manifest:docs/legacy-app/**`（ワイルドカード） | バリデーションエラー |
+
+メタデータの種類ごとに AND、同じ種類の中では OR。入力欄の `matching all included metadata` の all は、値ではなく種類の単位で読みます。
+
+カンマ区切りは弾かれ方が一貫していません。選択肢が決まっているキー（`severity` など）はエラーになりますが、`manifest` や `package` はエラーなく保存できて1件も当たりません。
+
+### 指定できるキー
+
+11個。実測で動作を確認したのは `malware` を除く10個です。
+
+| キー | 記述例 | ドキュメントでの表記 |
+| --- | --- | --- |
+| `severity:` | `severity:critical` | severity（値は `moderate`。`medium` は不可） |
+| `package:` | `package:node-forge` | package |
+| `ecosystem:` | `ecosystem:pip` | ecosystem |
+| `scope:` | `scope:development` | scope |
+| `manifest:` | `manifest:packages/app/package-lock.json` | manifest（フルパス完全一致のみ） |
+| `cwe:` | `cwe:1321` | 記載なし |
+| `cve_id:` | `cve_id:CVE-2021-44906` | `CVE-ID` |
+| `ghsa_id:` | `ghsa_id:GHSA-p8p7-x288-28g6` | `GHSA-ID` |
+| `epss:` | `epss:>0.1` | `epss_percentage` |
+| `malware:` | 未検証 | 記載なし |
+| `classification:` | `classification:vulnerability` | 記載なし |
+
+ドキュメントが挙げている Patch availability に対応するキーはありません。アクション側の `Until patch is available` として表現されています。alerts API で使える `relationship:` も指定できません。
+
+### ルールが評価されるタイミング
+
+3つだけです。定期的な再スキャンはありません。
+
+1. ルールを新規作成したとき（dismiss は既存アラートに遡って効く。反映は数秒）
+2. ルールを削除したとき（そのルールが閉じたアラートが `open` に戻る）
+3. 新しいアラートが発生したとき（`Open a pull request` はここでのみ発火）
+
+### アラートの state との関係
+
+| 経緯 | 再びルールの対象になるか |
+| --- | --- |
+| 手動 dismiss → 手動 reopen | ならない（恒久的に対象外） |
+| ルールで dismiss → ルール削除で復帰 | なる |
+
+手動で state を触ったアラートは、以降どのルールを作っても対象外になります。ルールの動作確認を手動 reopen で行うことはできません。
+
+### アクション
+
+| アクション | 挙動 |
+| --- | --- |
+| `Dismiss alerts` → `Indefinitely` | 修正版の有無に関係なく閉じる |
+| `Dismiss alerts` → `Until patch is available` | 修正版が存在しないアラートのみ対象 |
+| `Open a pull request` | 新規アラートにのみ発火。既存アラートには効かない。PR を作るだけでアラートは `open` のまま |
+
+dismiss ルールは PR ルールより先に評価されます。同じアラートに両方当たると PR は作られません。
+
+### 確認方法
+
+ルール一覧の表示は、スペース区切りで入力してもカンマ区切りに揃えられます。表示を見てもルールが機能するかは判別できません。編集画面を開けば入力どおりの文字列が見えます。
+
+確実なのは実際に閉じた件数を数えることです。UI では `resolution:auto-dismissed` で絞り込めます（この構文はドキュメントに記載がなく、`is:auto-dismissed` では引っかかりません）。
+
+以下は個別の検証記録です。
 
 ## ベースライン
 
