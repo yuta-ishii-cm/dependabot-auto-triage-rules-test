@@ -508,6 +508,20 @@ dependabot reopened this
 
 API の観測結果と一致しており、どのルールがどのアラートを閉じたのかを後から追う手段としても使えます。
 
+### 21. classification
+
+```
+classification:vulnerability manifest:docs/legacy-app/app/webroot/js/pkg-a/package-lock.json
+```
+
+結果: 成立。2026-08-26 実施。
+
+pkg-a の open 6件のうち #3〜#7 の5件が `auto_dismissed`（01:33:07Z、全件同一）。`classification:vulnerability` 単体では全アラートに当たる広い条件だが、`manifest:` との AND で pkg-a に限定され、対象外の5マニフェストは1件も動かなかった。
+
+このキーは alert filters のリファレンスにも auto-triage rules のドキュメントにも記載がなく、UI の候補一覧でのみ確認できる。値は `malware` と `vulnerability` の2つ。通常の脆弱性アラートは `vulnerability` に該当する。
+
+あわせてサイクル17の再確認になった。手動操作済みの #1 は条件（vulnerability かつ pkg-a）に完全に合致するにもかかわらず、5件が閉じた同じ瞬間に飛ばされている。
+
 ## 検証サイクル（状態遷移）
 
 ここからはルールの条件ではなく、アラートの state とルールの相互作用を見ます。「ルールがいつ評価されるのか」を切り分けるのが目的です。
@@ -666,3 +680,4 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 | 18 | ルール Disable → Enable で再評価 | 再 dismiss されるか | 未実施 |
 | 19 | ルール削除時の auto_dismissed | 据え置きか open か | open に戻る（確定）|
 | 20 | ルール有効中の新規アラート | 即 auto_dismissed | PR アクション版で実施。発生65秒後に PR 作成。dismiss 版は未実施 |
+| 21 | classification | 5件 | 5件で成立。ドキュメント未記載のキー |
