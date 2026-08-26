@@ -395,7 +395,11 @@ epss_percentage:>0.01
 
 期待: 18件。`>=`、範囲指定（`0.0..0.01`）が使えるかもあわせて確認。
 
-結果: 未実施。キー名はドキュメントの `epss_percentage` ではなく `epss`。候補の説明は比較演算子（`>n` `<n` `>=n` `<=n`）のみで、範囲指定の記載は無い。
+結果: 成立。2026-08-26 実施。
+
+`epss:>0.1` で #2（lodash、epss=0.21333）の1件だけが `auto_dismissed`（01:31:34Z）。すぐ下の #4（epss=0.07336）は `open` のまま残り、しきい値が正しく機能することを確認。
+
+キー名はドキュメントの `epss_percentage` ではなく `epss`。候補の説明は比較演算子（`>n` `<n` `>=n` `<=n`）のみで、範囲指定（`0.0..0.01`）の記載は無い。alerts API 側は `epss_percentage` かつ範囲指定も受け付けるため、ここでも API とルールで書き方が違う。
 
 ### 14. アクション: Until a patch is available
 
@@ -650,7 +654,7 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 | 10 | CVE ID | 1件 | 未実施（キー名は cve_id）|
 | 11 | GHSA ID | 1件 | 1件で成立（ghsa_id）|
 | 12 | CWE | 10件 | cwe:1321 で成立。数字のみ指定 |
-| 13 | EPSS Score | 18件 | 未実施（キー名は epss）|
+| 13 | EPSS Score | 18件 | `epss:>0.1` で1件。成立（キー名は epss）|
 | 14 | Until a patch is available | 7件 | 修正版なしのみ対象（確定）|
 | 15 | Open a pull request | PR 作成 | 新規アラートのみ発火（65秒で PR）。既存には効かない |
 | 16 | 手動 dismiss 済みにルール作成 | 据え置きか上書きか | 据え置き。残り6件は即 auto_dismissed |
