@@ -365,7 +365,11 @@ CVE-ID:CVE-2019-10744
 
 期待: 1件（#1 lodash critical）。
 
-結果: 未実施。キー名はドキュメントの `CVE-ID` ではなく `cve_id`（UI 候補で確認）。
+結果: 成立。2026-08-26 実施。
+
+`cve_id:CVE-2021-44906` で #9（minimist、critical）の1件だけが `auto_dismissed`（01:32:28Z）。同じ manifest の #8（CVE-2020-7598、medium）は `open` のまま残り、CVE 単位でのピンポイント指定が機能することを確認。
+
+キー名はドキュメントの `CVE-ID` ではなく `cve_id`。
 
 ### 11. GHSA ID
 
@@ -651,7 +655,7 @@ git add packages/late-arrival && git commit -m "test: ルール有効中の新�
 | 7 | package | 3件 | node-forge 15件で成立 |
 | 8 | 異なるキーの AND | 2件 | 2件で成立 |
 | 9 | has:patch | 40件 | キー自体が存在しない |
-| 10 | CVE ID | 1件 | 未実施（キー名は cve_id）|
+| 10 | CVE ID | 1件 | 1件で成立（キー名は cve_id）|
 | 11 | GHSA ID | 1件 | 1件で成立（ghsa_id）|
 | 12 | CWE | 10件 | cwe:1321 で成立。数字のみ指定 |
 | 13 | EPSS Score | 18件 | `epss:>0.1` で1件。成立（キー名は epss）|
