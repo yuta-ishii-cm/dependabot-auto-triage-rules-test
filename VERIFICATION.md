@@ -550,6 +550,8 @@ Rules: `Open a pull request`
 
 なお PR が作られたあともアラート #42 は `open` のままです（PR ルールは dismiss しない）。
 
+その PR をマージすると `fixed` になります（2026-08-26 実測）。マージ 02:04:31Z → `fixed_at` 02:04:40Z の9秒。`dismissed` / `auto_dismissed` とは別の state で、ルールで伏せた場合と実際に修正した場合が区別されます。
+
 `package:node-forge` を対象に `Open a pull request to resolve alerts` のみを選んだルールを作成し、30分観測しましたが PR も `dependabot/` ブランチも作られませんでした。
 
 条件は揃えてあります。
