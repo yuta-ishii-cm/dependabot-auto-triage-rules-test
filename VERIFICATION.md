@@ -230,6 +230,25 @@ package:uuid package:qs
 
 これで #30（qs）と #31（uuid）の2件が同時に `auto_dismissed` になりました（02:59:34Z、両件同一）。
 
+`manifest:` でも同様です（2026-08-26 実測）。
+
+```
+manifest:docs/legacy-app/app/webroot/js/pkg-a/package-lock.json manifest:docs/legacy-app/app/webroot/js/pkg-b/package-lock.json
+```
+
+pkg-a の6件（#2〜#7）と pkg-b の2件（#8, #9）が 01:25:16〜17Z に `auto_dismissed`。手動操作済みの #1 だけ `open` のまま残りました。同じ2パスをカンマでつないだ `Manifest comma test` が2日間0件だったのと対照的です。
+
+### ルール一覧の表示では機能するか判別できない
+
+重要な落とし穴です。スペース区切りで入力したルールも、一覧では**カンマ区切りで表示されます**。
+
+| ルール名 | 入力した記法 | 一覧の表示 | 実際の対象 |
+| --- | --- | --- | --- |
+| `Manifest comma test` | カンマ区切り | `manifest:パスA,パスB` | 0件 |
+| `Test manifest repeat` | スペース区切り | `manifest:パスA,パスB` | 8件 |
+
+画面上まったく同じ文字列に見えるのに、一方は機能して一方は機能しません。一覧の表示を見てルールの正しさを判断することはできず、実際に閉じた件数を確認するしかありません。
+
 スペース区切りの意味はキーが同じかどうかで変わります。
 
 | 書き方 | 意味 |
